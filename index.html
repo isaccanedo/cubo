@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial Visual - Cubo Mágico</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .cube-container {
+            perspective: 1000px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .cube {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            transform-style: preserve-3d;
+            transform: rotateX(-15deg) rotateY(25deg);
+            transition: transform 1s ease-in-out;
+            animation: slowRotate 20s infinite linear;
+        }
+
+        @keyframes slowRotate {
+            0% { transform: rotateX(-15deg) rotateY(25deg); }
+            25% { transform: rotateX(15deg) rotateY(115deg); }
+            50% { transform: rotateX(-15deg) rotateY(205deg); }
+            75% { transform: rotateX(15deg) rotateY(295deg); }
+            100% { transform: rotateX(-15deg) rotateY(385deg); }
+        }
+
+        .face {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 3px;
+            padding: 8px;
+        }
+
+        .sticker {
+            border-radius: 12px;
+            border: 3px solid rgba(0,0,0,0.8);
+            transition: all 0.5s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        .sticker::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.6), transparent);
+            transform: rotate(45deg);
+            transition: all 0.8s ease;
+            opacity: 0;
+        }
+
+        .sticker.highlight::before {
+            animation: shine 1s ease;
+        }
+
+        .sticker.move-animation {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(255,255,255,0.8);
+            z-index: 10;
+        }
+
+        /* Faces do cubo */
+        .front {
+            transform: rotateY(0deg) translateZ(200px);
+        }
+        .back {
+            transform: rotateY(180deg) translateZ(200px);
+        }
+        .right {
+            transform: rotateY(90deg) translateZ(200px);
+        }
+        .left {
+            transform: rotateY(-90deg) translateZ(200px);
+        }
+        .top {
+            transform: rotateX(90deg) translateZ(200px);
+        }
+        .bottom {
+            transform: rotateX(-90deg) translateZ(200px);
+        }
+
+        /* Cores do cubo */
+        .white { background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%); }
+        .yellow { background: linear-gradient(135deg, #ffeb3b 0%, #fdd835 100%); }
+        .red { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }
+        .orange { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); }
+        .blue { background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); }
+        .green { background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); }
+
+        /* Estados embaralhados */
+        .scrambled-white { background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%); }
+        .scrambled-yellow { background: linear-gradient(135deg, #ffeb3b 0%, #fdd835 100%); }
+        .scrambled-red { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }
+        .scrambled-orange { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); }
+        .scrambled-blue { background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); }
+        .scrambled-green { background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); }
+
+        .controls {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            backdrop-filter: blur(20px);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+
+        .control-btn.active {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+        }
+
+        .step-indicator {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transition: all 0.5s ease;
+        }
+
+        .step-dot.active {
+            background: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+            transform: scale(1.5);
+        }
+
+        .step-dot.completed {
+            background: #4caf50;
+        }
+
+        /* Animações de movimento */
+        @keyframes shine {
+            0% { opacity: 0; transform: translateX(-200%) translateY(-200%) rotate(45deg); }
+            50% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(200%) translateY(200%) rotate(45deg); }
+        }
+
+        @keyframes faceRotate {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(90deg); }
+        }
+
+        .face.rotating {
+            animation: faceRotate 0.8s ease-in-out;
+        }
+
+        /* Efeitos de partículas */
+        .particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: #00d4ff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @keyframes particle {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-100px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cube {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .face {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .front, .back { transform: rotateY(0deg) translateZ(150px); }
+            .back { transform: rotateY(180deg) translateZ(150px); }
+            .right { transform: rotateY(90deg) translateZ(150px); }
+            .left { transform: rotateY(-90deg) translateZ(150px); }
+            .top { transform: rotateX(90deg) translateZ(150px); }
+            .bottom { transform: rotateX(-90deg) translateZ(150px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="step-indicator" id="stepIndicator">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+    </div>
+
+    <div class="cube-container">
+        <div class="cube" id="cube">
+            <div class="face front" id="front">
+                <div class="sticker scrambled-orange" data-pos="0"></div>
+                <div class="sticker scrambled-white" data-pos="1"></div>
+                <div class="sticker scrambled-green" data-pos="2"></div>
+                <div class="sticker scrambled-blue" data-pos="3"></div>
+                <div class="sticker red" data-pos="4"></div>
+                <div class="sticker scrambled-yellow" data-pos="5"></div>
+                <div class="sticker scrambled-green" data-pos="6"></div>
+                <div class="sticker scrambled-orange" data-pos="7"></div>
+                <div class="sticker scrambled-white" data-pos="8"></div>
+            </div>
+
+            <div class="face back" id="back">
+                <div class="sticker scrambled-red" data-pos="0"></div>
+                <div class="sticker scrambled-blue" data-pos="1"></div>
+                <div class="sticker scrambled-yellow" data-pos="2"></div>
+                <div class="sticker scrambled-white" data-pos="3"></div>
+                <div class="sticker orange" data-pos="4"></div>
+                <div class="sticker scrambled-green" data-pos="5"></div>
+                <div class="sticker scrambled-blue" data-pos="6"></div>
+                <div class="sticker scrambled-red" data-pos="7"></div>
+                <div class="sticker scrambled-yellow" data-pos="8"></div>
+            </div>
+
+            <div class="face right" id="right">
+                <div class="sticker scrambled-yellow" data-pos="0"></div>
+                <div class="sticker scrambled-red" data-pos="1"></div>
+                <div class="sticker scrambled-blue" data-pos="2"></div>
+                <div class="sticker scrambled-orange" data-pos="3"></div>
+                <div class="sticker green" data-pos="4"></div>
+                <div class="sticker scrambled-white" data-pos="5"></div>
+                <div class="sticker scrambled-red" data-pos="6"></div>
+                <div class="sticker scrambled-green" data-pos="7"></div>
+                <div class="sticker scrambled-blue" data-pos="8"></div>
+            </div>
+
+            <div class="face left" id="left">
+                <div class="sticker scrambled-green" data-pos="0"></div>
+                <div class="sticker scrambled-yellow" data-pos="1"></div>
+                <div class="sticker scrambled-orange" data-pos="2"></div>
+                <div class="sticker scrambled-red" data-pos="3"></div>
+                <div class="sticker blue" data-pos="4"></div>
+                <div class="sticker scrambled-white" data-pos="5"></div>
+                <div class="sticker scrambled-yellow" data-pos="6"></div>
+                <div class="sticker scrambled-orange" data-pos="7"></div>
+                <div class="sticker scrambled-blue" data-pos="8"></div>
+            </div>
+
+            <div class="face top" id="top">
+                <div class="sticker scrambled-white" data-pos="0"></div>
+                <div class="sticker scrambled-green" data-pos="1"></div>
+                <div class="sticker scrambled-red" data-pos="2"></div>
+                <div class="sticker scrambled-blue" data-pos="3"></div>
+                <div class="sticker yellow" data-pos="4"></div>
+                <div class="sticker scrambled-orange" data-pos="5"></div>
+                <div class="sticker scrambled-green" data-pos="6"></div>
+                <div class="sticker scrambled-white" data-pos="7"></div>
+                <div class="sticker scrambled-red" data-pos="8"></div>
+            </div>
+
+            <div class="face bottom" id="bottom">
+                <div class="sticker scrambled-blue" data-pos="0"></div>
+                <div class="sticker scrambled-orange" data-pos="1"></div>
+                <div class="sticker scrambled-yellow" data-pos="2"></div>
+                <div class="sticker scrambled-green" data-pos="3"></div>
+                <div class="sticker white" data-pos="4"></div>
+                <div class="sticker scrambled-red" data-pos="5"></div>
+                <div class="sticker scrambled-orange" data-pos="6"></div>
+                <div class="sticker scrambled-blue" data-pos="7"></div>
+                <div class="sticker scrambled-yellow" data-pos="8"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="control-btn" id="startBtn" title="Iniciar">▶</button>
+        <button class="control-btn" id="pauseBtn" title="Pausar">⏸</button>
+        <button class="control-btn" id="resetBtn" title="Reiniciar">🔄</button>
+        <button class="control-btn" id="scrambleBtn" title="Embaralhar">🎲</button>
+    </div>
+
+    <script>
+        class VisualRubiksTutorial {
+            constructor() {
+                this.currentStep = 0;
+                this.isRunning = false;
+                this.isPaused = false;
+                this.animationSpeed = 1200;
+                this.pausePromise = null;
+                this.pauseResolve = null;
+                
+                this.solutionSteps = [
+                    {
+                        algorithm: "F R U R' U' F'",
+                        focus: ['front', 'right', 'top'],
+                        duration: 8000
+                    },
+                    {
+                        algorithm: "R U R' U'",
+                        focus: ['right', 'top'],
+                        duration: 6000
+                    },
+                    {
+                        algorithm: "U R U' R' U' F' U F",
+                        focus: ['top', 'right', 'front'],
+                        duration: 10000
+                    },
+                    {
+                        algorithm: "F R U R' U' F'",
+                        focus: ['front', 'right', 'top'],
+                        duration: 8000
+                    },
+                    {
+                        algorithm: "R U R' U R U2 R'",
+                        focus: ['right', 'top'],
+                        duration: 9000
+                    },
+                    {
+                        algorithm: "R' F R' B2 R F' R' B2 R2",
+                        focus: ['right', 'front', 'back'],
+                        duration: 12000
+                    },
+                    {
+                        algorithm: "R U R' F' R U R' U' R' F R2 U' R'",
+                        focus: ['right', 'top', 'front'],
+                        duration: 15000
+                    }
+                ];
+
+                this.initializeElements();
+                this.setupEventListeners();
+                this.createParticleSystem(); // Não implementado no seu código original, mas mantido para consistência
+            }
+
+            initializeElements() {
+                this.cube = document.getElementById('cube');
+                this.startBtn = document.getElementById('startBtn');
+                this.pauseBtn = document.getElementById('pauseBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.scrambleBtn = document.getElementById('scrambleBtn');
+                this.stepIndicator = document.getElementById('stepIndicator');
+            }
+
+            setupEventListeners() {
+                this.startBtn.addEventListener('click', () => this.toggleTutorial());
+                this.pauseBtn.addEventListener('click', () => this.pauseTutorial());
+                this.resetBtn.addEventListener('click', () => this.resetTutorial());
+                this.scrambleBtn.addEventListener('click', () => this.scrambleCube());
+
+                // Controle por teclado
+                document.addEventListener('keydown', (e) => {
+                    switch(e.code) {
+                        case 'Space':
+                            e.preventDefault();
+                            this.toggleTutorial();
+                            break;
+                        case 'KeyR':
+                            this.resetTutorial();
+                            break;
+                        case 'KeyS':
+                            this.scrambleCube();
+                            break;
+                    }
+                });
+            }
+
+            toggleTutorial() {
+                if (this.isRunning && !this.isPaused) {
+                    this.pauseTutorial();
+                } else if (this.isPaused) {
+                    this.resumeTutorial();
+                } else {
+                    this.startTutorial();
+                }
+            }
+
+            startTutorial() {
+                this.isRunning = true;
+                this.isPaused = false;
+                this.currentStep = 0;
+                this.startBtn.innerHTML = '⏸';
+                this.startBtn.classList.add('active');
+                this.runStep(0);
+            }
+
+            pauseTutorial() {
+                this.isPaused = true;
+                this.startBtn.innerHTML = '▶';
+                this.startBtn.classList.remove('active');
+                // Cria uma nova promessa para esperar a retomada
+                this.pausePromise = new Promise(resolve => {
+                    this.pauseResolve = resolve;
+                });
+            }
+
+            resumeTutorial() {
+                this.isPaused = false;
+                this.startBtn.innerHTML = '⏸';
+                this.startBtn.classList.add('active');
+                if (this.pauseResolve) {
+                    this.pauseResolve(); // Resolve a promessa de pausa
+                    this.pauseResolve = null;
+                    this.pausePromise = null;
+                }
+            }
+
+            async waitForResume() {
+                if (this.pausePromise) {
+                    await this.pausePromise;
+                }
+            }
+
+            resetTutorial() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.currentStep = 0;
+                this.startBtn.innerHTML = '▶';
+                this.startBtn.classList.remove('active');
+                this.updateStepIndicator();
+                this.solveCube(); // Colocamos solveCube para retornar ao estado resolvido
+                this.cube.style.animation = 'slowRotate 20s infinite linear';
+            }
+
+            async runStep(stepIndex) {
+                if (!this.isRunning || this.isPaused) return; // Parar se não estiver rodando ou estiver pausado
+
+                if (stepIndex >= this.solutionSteps.length) {
+                    this.completeTutorial();
+                    return;
+                }
+
+                this.updateStepIndicator();
+                const step = this.solutionSteps[stepIndex];
+                
+                // Parar rotação automática durante o passo
+                this.cube.style.animation = 'none';
+                
+                // Focar nas faces relevantes
+                await this.focusOnFaces(step.focus);
+                
+                // Executar o algoritmo
+                await this.executeAlgorithm(step.algorithm);
+                
+                // Marcar passo como concluído
+                this.markStepCompleted(stepIndex);
+                
+                // Aguardar antes do próximo passo
+                await this.delay(1500);
+
+                if (this.isRunning && !this.isPaused) {
+                    this.currentStep++;
+                    this.runStep(this.currentStep);
+                }
+            }
+
+            async focusOnFaces(faces) {
+                return new Promise(resolve => {
+                    // Destacar faces relevantes
+                    faces.forEach(faceId => {
+                        const face = document.getElementById(faceId);
+                        const stickers = face.querySelectorAll('.sticker');
+                        stickers.forEach(sticker => {
+                            sticker.classList.add('highlight');
+                        });
+                    });
+
+                    // Rotacionar cubo para melhor visualização
+                    this.rotateCubeToShowFaces(faces);
+                    
+                    setTimeout(() => {
+                        document.querySelectorAll('.sticker').forEach(s => {
+                            s.classList.remove('highlight');
+                        });
+                        resolve();
+                    }, 2000);
+                });
+            }
+
+            rotateCubeToShowFaces(faces) {
+                let rotation = 'rotateX(-15deg) rotateY(25deg)';
+                
+                if (faces.includes('right')) {
+                    rotation = 'rotateX(-15deg) rotateY(-45deg)';
+                } else if (faces.includes('back')) {
+                    rotation = 'rotateX(-15deg) rotateY(155deg)';
+                } else if (faces.includes('left')) {
+                    rotation = 'rotateX(-15deg) rotateY(135deg)';
+                } else if (faces.includes('top')) {
+                    rotation = 'rotateX(-45deg) rotateY(25deg)';
+                } else if (faces.includes('bottom')) {
+                    rotation = 'rotateX(25deg) rotateY(25deg)';
+                }
+                
+                this.cube.style.transform = rotation;
+            }
+
+            async executeAlgorithm(algorithm) {
+                const moves = algorithm.split(' ');
+                
+                for (let i = 0; i < moves.length; i++) {
+                    if (this.isPaused) {
+                        await this.waitForResume();
+                    }
+                    
+                    await this.executeMove(moves[i]);
+                    await this.delay(this.animationSpeed);
+                }
+            }
+
+            async executeMove(move) {
+                return new Promise(resolve => {
+                    // Determinar qual face rotacionar
+                    const face = this.getMoveface(move);
+                    const isClockwise = !move.includes("'");
+                    const isDouble = move.includes('2');
+                    
+                    // Simular movimento visual
+                    this.simulateFaceRotation(face, isClockwise, isDouble);
+                    
+                    // Criar efeito de partículas
+                    this.createMoveParticles(face);
+                    
+                    setTimeout(resolve, this.animationSpeed);
+                });
+            }
+
+            getMoveface(move) {
+                const faceMap = {
+                    'F': 'front', 'B': 'back', 'R': 'right',
+                    'L': 'left', 'U': 'top', 'D': 'bottom'
+                };
+                return faceMap[move.charAt(0)] || 'front';
+            }
+
+            simulateFaceRotation(faceId, clockwise, double) {
+                const face = document.getElementById(faceId);
+                const stickers = face.querySelectorAll('.sticker');
+                
+                // Destacar a face que está sendo movida
+                face.classList.add('rotating');
+                
+                stickers.forEach((sticker, index) => {
+                    setTimeout(() => {
+                        sticker.classList.add('move-animation', 'highlight');
+                        
+                        setTimeout(() => {
+                            sticker.classList.remove('move-animation', 'highlight');
+                        }, this.animationSpeed * 0.8);
+                    }, index * 50);
+                });
+                
+                // Simular mudanças de cor (movimento das peças)
+                setTimeout(() => {
+                    this.simulateColorChanges(faceId, clockwise, double);
+                    face.classList.remove('rotating');
+                }, this.animationSpeed * 0.5);
+            }
+
+            simulateColorChanges(faceId, clockwise, double) {
+                const face = document.getElementById(faceId);
+                const stickers = face.querySelectorAll('.sticker');
+                const colors = ['scrambled-red', 'scrambled-orange', 'scrambled-green', 'scrambled-blue', 'scrambled-yellow', 'scrambled-white'];
+                
+                // Simular mudança de posições das cores (simplificado para fins visuais)
+                // Uma implementação real exigiria um modelo de cubo mais complexo
+                const currentColors = Array.from(stickers).map(s => s.className.split(' ').find(cls => cls.startsWith('scrambled-') || cls === 'red' || cls === 'orange' || cls === 'green' || cls === 'blue' || cls === 'yellow' || cls === 'white'));
+                
+                let newColors = [...currentColors];
+                if (clockwise) {
+                    newColors[0] = currentColors[6];
+                    newColors[1] = currentColors[3];
+                    newColors[2] = currentColors[0];
+                    newColors[3] = currentColors[7];
+                    // newColors[4] = currentColors[4]; // Center doesn't move
+                    newColors[5] = currentColors[1];
+                    newColors[6] = currentColors[8];
+                    newColors[7] = currentColors[5];
+                    newColors[8] = currentColors[2];
+                } else { // Counter-clockwise
+                    newColors[0] = currentColors[2];
+                    newColors[1] = currentColors[5];
+                    newColors[2] = currentColors[8];
+                    newColors[3] = currentColors[1];
+                    // newColors[4] = currentColors[4]; // Center doesn't move
+                    newColors[5] = currentColors[7];
+                    newColors[6] = currentColors[0];
+                    newColors[7] = currentColors[3];
+                    newColors[8] = currentColors[6];
+                }
+
+                if (double) { // Apply the rotation twice for double moves
+                    const tempColors = [...newColors];
+                    if (clockwise) {
+                        newColors[0] = tempColors[6];
+                        newColors[1] = tempColors[3];
+                        newColors[2] = tempColors[0];
+                        newColors[3] = tempColors[7];
+                        newColors[5] = tempColors[1];
+                        newColors[6] = tempColors[8];
+                        newColors[7] = tempColors[5];
+                        newColors[8] = tempColors[2];
+                    } else { // Counter-clockwise
+                        newColors[0] = tempColors[2];
+                        newColors[1] = tempColors[5];
+                        newColors[2] = tempColors[8];
+                        newColors[3] = tempColors[1];
+                        newColors[5] = tempColors[7];
+                        newColors[6] = tempColors[0];
+                        newColors[7] = tempColors[3];
+                        newColors[8] = tempColors[6];
+                    }
+                }
+
+                stickers.forEach((sticker, index) => {
+                    const centerClass = sticker.classList.contains('red') ? 'red' :
+                                        sticker.classList.contains('orange') ? 'orange' :
+                                        sticker.classList.contains('green') ? 'green' :
+                                        sticker.classList.contains('blue') ? 'blue' :
+                                        sticker.classList.contains('yellow') ? 'yellow' :
+                                        sticker.classList.contains('white') ? 'white' : null;
+
+                    if (index !== 4) { // Não mudar o centro
+                        sticker.className = `sticker ${newColors[index]}`;
+                    } else if (centerClass) {
+                        sticker.className = `sticker ${centerClass}`; // Preserve original center color
+                    }
+                });
+            }
+
+            createMoveParticles(faceId) {
+                const faceElement = document.getElementById(faceId);
+                if (!faceElement) return; // Add a check to ensure element exists
+                const rect = faceElement.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        this.createParticle(centerX, centerY);
+                    }, i * 100);
+                }
+            }
+
+            createParticle(x, y) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 50 + Math.random() * 100;
+                const moveX = Math.cos(angle) * velocity;
+                const moveY = Math.sin(angle) * velocity;
+                
+                particle.style.transform = `translate(${moveX}px, ${moveY}px)`;
+                particle.style.animation = 'particle 1s ease-out forwards';
+                
+                document.body.appendChild(particle);
+                
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 1000);
+            }
+
+            createParticleSystem() {
+                // This method was present in your original code but empty.
+                // It can be used for more advanced particle effects if desired.
+            }
+
+
+            completeTutorial() {
+                this.isRunning = false;
+                this.startBtn.innerHTML = '✓';
+                this.startBtn.classList.remove('active');
+                
+                // Resolver o cubo
+                setTimeout(() => {
+                    this.solveCube();
+                }, 1000);
+                
+                // Retomar rotação automática
+                setTimeout(() => {
+                    this.cube.style.animation = 'slowRotate 20s infinite linear';
+                }, 3000);
+            }
+
+            solveCube() {
+                const faces = {
+                    'front': 'red', 'back': 'orange', 'right': 'green',
+                    'left': 'blue', 'top': 'yellow', 'bottom': 'white'
+                };
+
+                Object.keys(faces).forEach(faceId => {
+                    const face = document.getElementById(faceId);
+                    const stickers = face.querySelectorAll('.sticker');
+                    const color = faces[faceId];
+                    
+                    stickers.forEach((sticker, index) => {
+                        setTimeout(() => {
+                            sticker.className = `sticker ${color}`;
+                            sticker.classList.add('highlight');
+                            
+                            // Criar partículas de celebração
+                            this.createCelebrationParticles();
+                            
+                            setTimeout(() => {
+                                sticker.classList.remove('highlight');
+                            }, 500);
+                        }, index * 80);
+                    });
+                });
+            }
+
+            createCelebrationParticles() {
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b'];
+                
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const particle = document.createElement('div');
+                        particle.style.position = 'fixed';
+                        particle.style.left = Math.random() * window.innerWidth + 'px';
+                        particle.style.top = Math.random() * window.innerHeight + 'px';
+                        particle.style.width = '6px';
+                        particle.style.height = '6px';
+                        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                        particle.style.borderRadius = '50%';
+                        particle.style.pointerEvents = 'none';
+                        particle.style.zIndex = '1000';
+                        particle.style.animation = 'particle 2s ease-out forwards';
+                        
+                        document.body.appendChild(particle);
+                        
+                        setTimeout(() => {
+                            if (particle.parentNode) {
+                                particle.parentNode.removeChild(particle);
+                            }
+                        }, 2000);
+                    }, i * 200);
+                }
+            }
+
+            scrambleCube() {
+                const colors = ['scrambled-red', 'scrambled-orange', 'scrambled-green', 'scrambled-blue', 'scrambled-yellow', 'scrambled-white'];
+                const faces = ['front', 'back', 'right', 'left', 'top', 'bottom'];
+                const centerColors = {
+                    'front': 'red', 'back': 'orange', 'right': 'green',
+                    'left': 'blue', 'top': 'yellow', 'bottom': 'white'
+                };
+
+                faces.forEach(faceId => {
+                    const face = document.getElementById(faceId);
+                    const stickers = face.querySelectorAll('.sticker');
+                    
+                    stickers.forEach((sticker, index) => {
+                        setTimeout(() => {
+                            if (index === 4) {
+                                sticker.className = `sticker ${centerColors[faceId]}`;
+                            } else {
+                                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                                sticker.className = `sticker ${randomColor}`;
+                            }
+                        }, index * 30);
+                    });
+                });
+            }
+
+            // --- FUNÇÕES ADICIONADAS ---
+
+            updateStepIndicator() {
+                const dots = this.stepIndicator.querySelectorAll('.step-dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.remove('active', 'completed');
+                    if (index === this.currentStep) {
+                        dot.classList.add('active');
+                    } else if (index < this.currentStep) {
+                        dot.classList.add('completed');
+                    }
+                });
+            }
+
+            markStepCompleted(stepIndex) {
+                const dots = this.stepIndicator.querySelectorAll('.step-dot');
+                if (dots[stepIndex]) {
+                    dots[stepIndex].classList.remove('active');
+                    dots[stepIndex].classList.add('completed');
+                }
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Inicializar o tutorial após o carregamento da página
+        window.addEventListener('DOMContentLoaded', () => {
+            new VisualRubiksTutorial();
+        });
+    </script>
+</body>
+</html>
